@@ -7,7 +7,7 @@ public class PlayerController : NetworkBehaviour
     [SerializeField] private float rotateSpeed = 200f;
 
     [SerializeField] private GameObject bulletPrefab;
-    public Transform leftFirePoint;  // Ліве дуло
+    public Transform leftFirePoint; 
     public Transform rightFirePoint;
 
     private Rigidbody2D rb;
@@ -27,8 +27,6 @@ public class PlayerController : NetworkBehaviour
             FireServerRpc();
         }
     }
-
-
 
     private void HandleMovement()
     {

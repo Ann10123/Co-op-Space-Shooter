@@ -22,7 +22,18 @@ public class GameManager : NetworkBehaviour
     [Header("Wave UI")]
     public TextMeshProUGUI waveText;
 
+    [Header("Win UI")]
+    public GameObject winPanel;
+    public TextMeshProUGUI finalScoreText;
+    public TextMeshProUGUI finalTimerText;
+
+    [Header("Lose UI")] 
+    public GameObject losePanel;
+    public TextMeshProUGUI loseScoreText;
+    public TextMeshProUGUI loseTimerText;
+
     private float timer = 0f;
+    private bool isGameEnded = false;
 
     void Awake()
     {
@@ -65,6 +76,49 @@ public class GameManager : NetworkBehaviour
     private void UpdateTimerUI(int oldVal, int newVal)
     {
         if (timerText != null) timerText.text = "Time: " + newVal + " s";
+    }
+
+    public void TriggerWin()
+    {
+        if (!IsServer || isGameEnded) return;
+
+        isGameEnded = true;
+        ShowWinPanelClientRpc(score.Value, surviveTime.Value);
+    }
+
+    [ClientRpc]
+    private void ShowWinPanelClientRpc(int finalScore, int finalTime)
+    {
+        Time.timeScale = 0f;
+        if (winPanel != null)
+        {
+            winPanel.SetActive(true);
+        }
+        if (finalScoreText != null)
+        {
+            finalScoreText.text = "Score: " + finalScore;
+        }
+
+        if (finalTimerText != null)
+        {
+            finalTimerText.text = "Time: " + finalTime + " s";
+        }
+    }
+
+    public void TriggerLose()
+    {
+        if (!IsServer || isGameEnded) return; 
+        isGameEnded = true;
+        ShowLosePanelClientRpc(score.Value, surviveTime.Value);
+    }
+
+    [ClientRpc]
+    private void ShowLosePanelClientRpc(int finalScore, int finalTime)
+    {
+        Time.timeScale = 0f;
+        if (losePanel != null) losePanel.SetActive(true);
+        if (loseScoreText != null) loseScoreText.text = "Score: " + finalScore;
+        if (loseTimerText != null) loseTimerText.text = "Time: " + finalTime + " s";
     }
 
     public void TogglePause()
@@ -130,7 +184,9 @@ public class GameManager : NetworkBehaviour
         Time.timeScale = 1f;
         if (pausePanel != null)
         {
-            pausePanel.SetActive(false);
+            if (pausePanel != null) pausePanel.SetActive(false);
+            if (winPanel != null) winPanel.SetActive(false);
+            if (losePanel != null) losePanel.SetActive(false);
         }
     }
 

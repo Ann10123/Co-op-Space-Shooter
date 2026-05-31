@@ -1,17 +1,15 @@
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.UI; // Обов'язково для роботи зі слайдером
+using UnityEngine.UI;
 
 public class EnemyController : NetworkBehaviour
 {
-    [Header("Налаштування здоров'я")]
-    public int maxHealth = 50; // Дефолтне значення з Інспектора
-
-    // МЕРЕЖЕВІ ЗМІННІ: тепер синхронізуємо і поточне, і максимальне здоров'я хвилі
+    [Header("Health")]
+    public int maxHealth = 50; 
     private NetworkVariable<int> currentHealth = new NetworkVariable<int>();
     private NetworkVariable<int> syncedMaxHealth = new NetworkVariable<int>();
 
-    [Header("Рух та UI")]
+    [Header("UI")]
     public float speed = 3f;
     [SerializeField] private Slider healthSlider;
 
@@ -41,8 +39,6 @@ public class EnemyController : NetworkBehaviour
     {
         if (IsServer)
         {
-            // Якщо ворог з'явився не через спавнер хвиль (наприклад, вручну),
-            // задаємо йому стандартні значення з Інспектора
             if (syncedMaxHealth.Value == 0)
             {
                 syncedMaxHealth.Value = maxHealth;
@@ -50,14 +46,12 @@ public class EnemyController : NetworkBehaviour
             }
         }
 
-        // Налаштовуємо слайдер для ВСІХ клієнтів, беручи точне значення з мережі
         if (healthSlider != null)
         {
             healthSlider.maxValue = syncedMaxHealth.Value;
             healthSlider.value = currentHealth.Value;
         }
 
-        // Підписуємося на оновлення змінних
         currentHealth.OnValueChanged += OnHealthChanged;
         syncedMaxHealth.OnValueChanged += OnMaxHealthChanged;
     }
@@ -174,6 +168,10 @@ public class EnemyController : NetworkBehaviour
             if (playerNetworkObject != null && playerNetworkObject.IsSpawned)
             {
                 playerNetworkObject.Despawn(true);
+                if (GameManager.Instance != null)
+                {
+                    GameManager.Instance.TriggerLose();
+                }
             }
         }
     }

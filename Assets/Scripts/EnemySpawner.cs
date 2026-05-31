@@ -16,18 +16,22 @@ public class EnemySpawner : NetworkBehaviour
         public float spawnInterval;
         public float delayBeforeWave;
 
-        [Header("Налаштування складності хвилі")]
+        [Header("Complexity wave")]
         public float enemySizeMultiplier; 
         public int enemyHealth;
         public int scorePerEnemy;
     }
 
-    [Header("Налаштування за замовчуванням")]
     [SerializeField] private GameObject defaultEnemyPrefab;
-    public float spawnRadius = 8f;
 
-    [Header("Налаштування Хвиль")]
+
+    [Header("Wave")]
     public List<Wave> waves;
+
+    [Header("Safe Spawn Settings")]
+    public float spawnRadius = 8f;
+    public float safeRadius = 2.5f;
+    public int maxSpawnAttempts = 10;
 
     private int currentWaveIndex = 0;
     private Coroutine waveCoroutine;
@@ -79,8 +83,38 @@ public class EnemySpawner : NetworkBehaviour
 
         if (GameManager.Instance != null)
         {
-            //GameManager.Instance.TriggerGameOver(true);
+            GameManager.Instance.TriggerWin();
         }
+    }
+
+    private Vector2 GetSafeSpawnPosition()
+    {
+        Vector2 potentialPosition = Vector2.zero;
+        bool isSafe = false;
+
+        for (int i = 0; i < maxSpawnAttempts; i++)
+        {
+            potentialPosition = (Vector2)transform.position + Random.insideUnitCircle * spawnRadius;
+            Collider2D[] colliders = Physics2D.OverlapCircleAll(potentialPosition, safeRadius);
+
+            bool foundPlayer = false;
+
+            foreach (Collider2D col in colliders)
+            {
+                if (col.CompareTag("Players")) 
+                {
+                    foundPlayer = true;
+                    break; 
+                }
+            }
+
+            if (!foundPlayer)
+            {
+                isSafe = true;
+                break;
+            }
+        }
+        return potentialPosition;
     }
 
     private void SpawnEnemy(Wave wave)
@@ -90,11 +124,10 @@ public class EnemySpawner : NetworkBehaviour
         {
             prefabToSpawn = wave.enemyPrefabs[Random.Range(0, wave.enemyPrefabs.Length)];
         }
-
         if (prefabToSpawn == null) return;
 
-        Vector2 randomPosition = (Vector2)transform.position + Random.insideUnitCircle * spawnRadius;
-        GameObject enemy = Instantiate(prefabToSpawn, randomPosition, Quaternion.identity);
+        Vector2 safePosition = GetSafeSpawnPosition();
+        GameObject enemy = Instantiate(prefabToSpawn, safePosition, Quaternion.identity);
 
         float finalMultiplier = wave.enemySizeMultiplier > 0 ? wave.enemySizeMultiplier : 1f;
         enemy.transform.localScale = prefabToSpawn.transform.localScale * finalMultiplier;

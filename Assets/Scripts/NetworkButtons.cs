@@ -3,25 +3,35 @@ using UnityEngine;
 
 public class NetworkButtons : MonoBehaviour
 {
-    private void OnGUI()
+    [Header("UI Elements")]
+    public GameObject networkUIContainer;
+
+    // Цей метод ми прив'яжемо до кнопки Host
+    public void StartHost()
     {
-        if (NetworkManager.Singleton == null) return;
-
-        GUILayout.BeginArea(new Rect(10, 10, 300, 300));
-
-        if (!NetworkManager.Singleton.IsClient && !NetworkManager.Singleton.IsServer)
+        if (NetworkManager.Singleton != null)
         {
-            if (GUILayout.Button("Host (Створити кімнату)"))
-            {
-                NetworkManager.Singleton.StartHost();
-            }
-
-            if (GUILayout.Button("Client (Приєднатися)"))
-            {
-                NetworkManager.Singleton.StartClient();
-            }
+            NetworkManager.Singleton.StartHost();
+            HideUI();
         }
+    }
 
-        GUILayout.EndArea();
+    // Цей метод ми прив'яжемо до кнопки Client
+    public void StartClient()
+    {
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.StartClient();
+            HideUI();
+        }
+    }
+
+    // Метод для приховування кнопок
+    private void HideUI()
+    {
+        if (networkUIContainer != null)
+        {
+            networkUIContainer.SetActive(false);
+        }
     }
 }
