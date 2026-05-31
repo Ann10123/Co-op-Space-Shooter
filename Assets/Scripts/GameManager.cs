@@ -145,7 +145,7 @@ public class GameManager : NetworkBehaviour
     public void RequestRestartServerRpc()
     {
         if (!IsServer) return;
-
+        isGameEnded = false;
         score.Value = 0;
         surviveTime.Value = 0;
         timer = 0f;

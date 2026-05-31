@@ -8,10 +8,12 @@ public class EnemyController : NetworkBehaviour
     public int maxHealth = 50; 
     private NetworkVariable<int> currentHealth = new NetworkVariable<int>();
     private NetworkVariable<int> syncedMaxHealth = new NetworkVariable<int>();
+    public AudioClip deathSound;
 
     [Header("UI")]
     public float speed = 3f;
     [SerializeField] private Slider healthSlider;
+    public GameObject explosionPrefab;
 
     private Transform targetPlayer;
     private Rigidbody2D rb;
@@ -150,9 +152,24 @@ public class EnemyController : NetworkBehaviour
                 {
                     GameManager.Instance.AddScore(pointsForKill);
                 }
-
+                PlayDeathSoundClientRpc(transform.position);
                 NetworkObject.Despawn(true);
             }
+        }
+    }
+
+    [ClientRpc]
+    private void PlayDeathSoundClientRpc(Vector3 position)
+    {
+        if (deathSound != null)
+        {
+            Vector3 soundPosition = new Vector3(position.x, position.y, Camera.main.transform.position.z);
+            AudioSource.PlayClipAtPoint(deathSound, soundPosition);
+        }
+        if (explosionPrefab != null)
+        {
+            GameObject effect = Instantiate(explosionPrefab, position, Quaternion.identity);
+            Destroy(effect, 1f);
         }
     }
 

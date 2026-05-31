@@ -5,6 +5,7 @@ public class PlayerController : NetworkBehaviour
 {
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float rotateSpeed = 200f;
+    public AudioSource shootSound;
 
     [SerializeField] private GameObject bulletPrefab;
     public Transform leftFirePoint; 
@@ -24,6 +25,7 @@ public class PlayerController : NetworkBehaviour
         HandleMovement();
         if (Input.GetKeyDown(KeyCode.Space))
         {
+            shootSound.Play();
             FireServerRpc();
         }
     }
@@ -37,29 +39,24 @@ public class PlayerController : NetworkBehaviour
         transform.Rotate(Vector3.forward * -rotateInput * rotateSpeed * Time.deltaTime);
     }
 
-    // НОВИЙ МЕТОД: [ServerRpc] означає, що цей код виконається ТІЛЬКИ на сервері
     [ServerRpc]
     private void FireServerRpc()
     {
         GameObject leftBullet = Instantiate(bulletPrefab, leftFirePoint.position, leftFirePoint.rotation);
         leftBullet.GetComponent<NetworkObject>().Spawn();
-
-        // Даємо швидкість ЛІВІЙ кулі через її Rigidbody2D
         Rigidbody2D rbLeft = leftBullet.GetComponent<Rigidbody2D>();
         if (rbLeft != null)
         {
-            rbLeft.linearVelocity = leftFirePoint.up * 10f; // Заміни 10f на швидкість своєї кулі
+            rbLeft.linearVelocity = leftFirePoint.up * 10f; 
         }
 
-        // 2. Створюємо праву кулю
         GameObject rightBullet = Instantiate(bulletPrefab, rightFirePoint.position, rightFirePoint.rotation);
         rightBullet.GetComponent<NetworkObject>().Spawn();
 
-        // Даємо швидкість ПРАВІЙ кулі через її Rigidbody2D
         Rigidbody2D rbRight = rightBullet.GetComponent<Rigidbody2D>();
         if (rbRight != null)
         {
-            rbRight.linearVelocity = rightFirePoint.up * 10f; // Заміни 10f на швидкість своєї кулі
+            rbRight.linearVelocity = rightFirePoint.up * 10f; 
         }
     }
 }

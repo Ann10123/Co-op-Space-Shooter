@@ -6,7 +6,6 @@ public class NetworkButtons : MonoBehaviour
     [Header("UI Elements")]
     public GameObject networkUIContainer;
 
-    // Цей метод ми прив'яжемо до кнопки Host
     public void StartHost()
     {
         if (NetworkManager.Singleton != null)
@@ -16,7 +15,6 @@ public class NetworkButtons : MonoBehaviour
         }
     }
 
-    // Цей метод ми прив'яжемо до кнопки Client
     public void StartClient()
     {
         if (NetworkManager.Singleton != null)
@@ -26,7 +24,6 @@ public class NetworkButtons : MonoBehaviour
         }
     }
 
-    // Метод для приховування кнопок
     private void HideUI()
     {
         if (networkUIContainer != null)

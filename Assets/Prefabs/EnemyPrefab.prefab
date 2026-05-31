@@ -247,7 +247,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d5a57f767e5e46a458fc5d3c628d0cbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Netcode.Runtime::Unity.Netcode.NetworkObject
-  GlobalObjectIdHash: 3719214344
+  GlobalObjectIdHash: 2550825197
   InScenePlacedSourceGlobalObjectIdHash: 0
   DeferredDespawnTick: 0
   Ownership: 1
@@ -320,8 +320,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Enemy
   ShowTopMostFoldoutHeaderGroup: 1
   maxHealth: 50
+  deathSound: {fileID: 8300000, guid: de1fa9e539f923d4d8f6b327452d6771, type: 3}
   speed: 0.75
   healthSlider: {fileID: 2724684595618710990}
+  explosionPrefab: {fileID: 4313096597417449486, guid: 92166df26ec3e9b4583ebc6d2db69189, type: 3}
 --- !u!114 &-3595775685244522863
 MonoBehaviour:
   m_ObjectHideFlags: 0
