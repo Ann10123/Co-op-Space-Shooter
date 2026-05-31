@@ -4,49 +4,78 @@ using UnityEngine.UI; // Обов'язково для роботи зі слай
 
 public class EnemyController : NetworkBehaviour
 {
-    // Максимальне здоров'я, яке можна вільно змінювати в Інспекторі Unity
-    public int maxHealth = 50;
+    [Header("Налаштування здоров'я")]
+    public int maxHealth = 50; // Дефолтне значення з Інспектора
 
-    // Мережева змінна для синхронізації (тепер вона стартує порожньою)
+    // МЕРЕЖЕВІ ЗМІННІ: тепер синхронізуємо і поточне, і максимальне здоров'я хвилі
     private NetworkVariable<int> currentHealth = new NetworkVariable<int>();
+    private NetworkVariable<int> syncedMaxHealth = new NetworkVariable<int>();
 
+    [Header("Рух та UI")]
     public float speed = 3f;
-    [SerializeField] private Slider healthSlider; 
+    [SerializeField] private Slider healthSlider;
 
     private Transform targetPlayer;
     private Rigidbody2D rb;
     private float searchTimer = 0f;
+    private int pointsForKill = 10;
 
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
     }
 
+    public void SetMaxHealth(int newMaxHealth)
+    {
+        if (!IsServer) return;
+
+        syncedMaxHealth.Value = newMaxHealth;
+        currentHealth.Value = newMaxHealth;
+    }
+    public void SetScoreValue(int points)
+    {
+        pointsForKill = points;
+    }
+
     public override void OnNetworkSpawn()
     {
         if (IsServer)
         {
-            currentHealth.Value = maxHealth;
+            // Якщо ворог з'явився не через спавнер хвиль (наприклад, вручну),
+            // задаємо йому стандартні значення з Інспектора
+            if (syncedMaxHealth.Value == 0)
+            {
+                syncedMaxHealth.Value = maxHealth;
+                currentHealth.Value = maxHealth;
+            }
         }
+
+        // Налаштовуємо слайдер для ВСІХ клієнтів, беручи точне значення з мережі
         if (healthSlider != null)
         {
-            healthSlider.maxValue = maxHealth;
+            healthSlider.maxValue = syncedMaxHealth.Value;
             healthSlider.value = currentHealth.Value;
         }
+
+        // Підписуємося на оновлення змінних
         currentHealth.OnValueChanged += OnHealthChanged;
+        syncedMaxHealth.OnValueChanged += OnMaxHealthChanged;
     }
 
     public override void OnNetworkDespawn()
     {
         currentHealth.OnValueChanged -= OnHealthChanged;
+        syncedMaxHealth.OnValueChanged -= OnMaxHealthChanged;
     }
 
     private void OnHealthChanged(int oldVal, int newVal)
     {
-        if (healthSlider != null)
-        {
-            healthSlider.value = newVal;
-        }
+        if (healthSlider != null) healthSlider.value = newVal;
+    }
+
+    private void OnMaxHealthChanged(int oldVal, int newVal)
+    {
+        if (healthSlider != null) healthSlider.maxValue = newVal;
     }
 
     void Update()
@@ -125,7 +154,7 @@ public class EnemyController : NetworkBehaviour
             {
                 if (GameManager.Instance != null)
                 {
-                    GameManager.Instance.AddScore(10);
+                    GameManager.Instance.AddScore(pointsForKill);
                 }
 
                 NetworkObject.Despawn(true);

@@ -2,6 +2,7 @@ using Unity.Netcode;
 using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
+using System.Collections.Generic;
 
 public class GameManager : NetworkBehaviour
 {
@@ -11,8 +12,15 @@ public class GameManager : NetworkBehaviour
     public TextMeshProUGUI scoreText;
     public TextMeshProUGUI timerText;
     public GameObject pausePanel;
+
+    [Header("Prefabs")]
+    public GameObject playerPrefab; 
+
     private NetworkVariable<int> score = new NetworkVariable<int>(0);
     private NetworkVariable<int> surviveTime = new NetworkVariable<int>(0);
+
+    [Header("Wave UI")]
+    public TextMeshProUGUI waveText;
 
     private float timer = 0f;
 
@@ -33,10 +41,10 @@ public class GameManager : NetworkBehaviour
 
     void Update()
     {
-        if (!IsServer) return;
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsListening || !IsServer) return;
 
         timer += Time.deltaTime;
-        if (timer >= 1f) 
+        if (timer >= 1f)
         {
             surviveTime.Value++;
             timer = 0f;
@@ -53,6 +61,7 @@ public class GameManager : NetworkBehaviour
     {
         if (scoreText != null) scoreText.text = "Score: " + newVal;
     }
+
     private void UpdateTimerUI(int oldVal, int newVal)
     {
         if (timerText != null) timerText.text = "Time: " + newVal + " s";
@@ -87,26 +96,31 @@ public class GameManager : NetworkBehaviour
         surviveTime.Value = 0;
         timer = 0f;
 
-        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
-        foreach (GameObject enemy in enemies)
+        if (EnemySpawner.Instance != null)
         {
-            NetworkObject netObj = enemy.GetComponent<NetworkObject>();
-            if (netObj != null && netObj.IsSpawned)
+            EnemySpawner.Instance.ResetSpawner();
+        }
+        var spawnedObjects = new List<NetworkObject>(NetworkManager.Singleton.SpawnManager.SpawnedObjects.Values);
+        foreach (var netObj in spawnedObjects)
+        {
+            if (netObj != null && netObj.CompareTag("Enemy"))
             {
                 netObj.Despawn(true); 
             }
-            else
+        }
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        {
+            if (client.PlayerObject == null) 
             {
-                Destroy(enemy);
+                GameObject newPlayer = Instantiate(playerPrefab, Vector3.zero, Quaternion.identity);
+                newPlayer.GetComponent<NetworkObject>().SpawnAsPlayerObject(client.ClientId, true);
+            }
+            else 
+            {
+                client.PlayerObject.gameObject.SetActive(true);
+                client.PlayerObject.transform.position = Vector3.zero;
             }
         }
-
-        GameObject[] players = GameObject.FindGameObjectsWithTag("Players");
-        foreach (GameObject player in players)
-        {
-            player.transform.position = Vector3.zero; 
-        }
-
         ResetGameUIClientRpc();
     }
 
@@ -118,5 +132,36 @@ public class GameManager : NetworkBehaviour
         {
             pausePanel.SetActive(false);
         }
+    }
+
+    public void QuitGame()
+    {
+        Time.timeScale = 1f;
+        if (NetworkManager.Singleton != null)
+        {
+            NetworkManager.Singleton.Shutdown();
+        }
+
+        string currentSceneName = SceneManager.GetActiveScene().name;
+        SceneManager.LoadScene(currentSceneName);
+    }
+
+    [ClientRpc]
+    public void ShowWaveAnnouncementClientRpc(string waveName)
+    {
+        if (waveText != null)
+        {
+            StartCoroutine(WaveAnnouncementRoutine(waveName));
+        }
+    }
+
+    private System.Collections.IEnumerator WaveAnnouncementRoutine(string waveName)
+    {
+        waveText.text = waveName; 
+        waveText.gameObject.SetActive(true); 
+
+        yield return new WaitForSeconds(2.5f);
+
+        waveText.gameObject.SetActive(false); 
     }
 }

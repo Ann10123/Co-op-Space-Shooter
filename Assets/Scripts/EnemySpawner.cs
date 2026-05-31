@@ -1,61 +1,136 @@
+using System.Collections;
+using System.Collections.Generic;
 using Unity.Netcode;
 using UnityEngine;
 
 public class EnemySpawner : NetworkBehaviour
 {
-    [Header("Налаштування префабу")]
-    [SerializeField] private GameObject enemyPrefab;
+    public static EnemySpawner Instance;
 
-    [Header("Налаштування випадкового часу")]
-    public float minSpawnTime = 1f; // Мінімальний час очікування (1 секунда)
-    public float maxSpawnTime = 5f; // Максимальний час очікування (5 секунд)
+    [System.Serializable]
+    public struct Wave
+    {
+        public string waveName;
+        public GameObject[] enemyPrefabs;
+        public int enemyCount;
+        public float spawnInterval;
+        public float delayBeforeWave;
 
-    [Header("Налаштування радіусу")]
+        [Header("Налаштування складності хвилі")]
+        public float enemySizeMultiplier; 
+        public int enemyHealth;
+        public int scorePerEnemy;
+    }
+
+    [Header("Налаштування за замовчуванням")]
+    [SerializeField] private GameObject defaultEnemyPrefab;
     public float spawnRadius = 8f;
 
-    private float nextSpawnTime; // Змінна, яка зберігає час, коли має з'явитися наступний ворог
-    private float timer;         // Наш внутрішній лічильник часу
+    [Header("Налаштування Хвиль")]
+    public List<Wave> waves;
+
+    private int currentWaveIndex = 0;
+    private Coroutine waveCoroutine;
+
+    void Awake()
+    {
+        if (Instance == null) Instance = this;
+    }
 
     public override void OnNetworkSpawn()
     {
-        // Якщо ми на сервері, одразу задаємо випадковий час для першого ворога
-        if (IsServer)
+        if (IsServer) StartWaves();
+    }
+
+    public void StartWaves()
+    {
+        if (!IsServer) return;
+
+        StopAllCoroutines();
+        waveCoroutine = null;
+        currentWaveIndex = 0;
+
+        waveCoroutine = StartCoroutine(WaveRoutine());
+    }
+
+    private IEnumerator WaveRoutine()
+    {
+        while (currentWaveIndex < waves.Count)
         {
-            SetRandomNextSpawnTime();
+            Wave currentWave = waves[currentWaveIndex];
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.ShowWaveAnnouncementClientRpc(currentWave.waveName);
+            }
+            yield return new WaitForSeconds(currentWave.delayBeforeWave);
+
+            for (int i = 0; i < currentWave.enemyCount; i++)
+            {
+                SpawnEnemy(currentWave);
+                yield return new WaitForSeconds(currentWave.spawnInterval);
+            }
+
+            while (GameObject.FindGameObjectsWithTag("Enemy").Length > 0)
+            {
+                yield return new WaitForSeconds(1f);
+            }
+            currentWaveIndex++;
+        }
+
+        if (GameManager.Instance != null)
+        {
+            //GameManager.Instance.TriggerGameOver(true);
         }
     }
 
-    void Update()
+    private void SpawnEnemy(Wave wave)
     {
-        // Роботу з таймером виконує ТІЛЬКИ сервер
-        if (!IsSpawned || !IsServer) return;
-
-        // Рахуємо час, який пройшов
-        timer += Time.deltaTime;
-
-        if (timer >= nextSpawnTime)
+        GameObject prefabToSpawn = defaultEnemyPrefab;
+        if (wave.enemyPrefabs != null && wave.enemyPrefabs.Length > 0)
         {
-            SpawnEnemy();
-            timer = 0f;
-            SetRandomNextSpawnTime();
+            prefabToSpawn = wave.enemyPrefabs[Random.Range(0, wave.enemyPrefabs.Length)];
         }
-    }
 
-    private void SetRandomNextSpawnTime()
-    {
-        // Обираємо випадкове число в заданих межах (наприклад, між 1 та 5 секундами)
-        nextSpawnTime = Random.Range(minSpawnTime, maxSpawnTime);
-    }
+        if (prefabToSpawn == null) return;
 
-    private void SpawnEnemy()
-    {
-        // Генеруємо випадкову точку на карті
         Vector2 randomPosition = (Vector2)transform.position + Random.insideUnitCircle * spawnRadius;
+        GameObject enemy = Instantiate(prefabToSpawn, randomPosition, Quaternion.identity);
 
-        // Створюємо об'єкт
-        GameObject enemy = Instantiate(enemyPrefab, randomPosition, Quaternion.identity);
+        float finalMultiplier = wave.enemySizeMultiplier > 0 ? wave.enemySizeMultiplier : 1f;
+        enemy.transform.localScale = prefabToSpawn.transform.localScale * finalMultiplier;
 
-        // Спавнимо в мережі для всіх гравців
+        EnemyController enemyController = enemy.GetComponent<EnemyController>();
+        if (enemyController != null && wave.enemyHealth > 0)
+        {
+            enemyController.SetMaxHealth(wave.enemyHealth);
+            enemyController.SetScoreValue(wave.scorePerEnemy);
+        }
+
         enemy.GetComponent<NetworkObject>().Spawn();
+    }
+
+    public void ResetSpawner()
+    {
+        if (!IsServer) return;
+
+        StopAllCoroutines();
+        waveCoroutine = null;
+
+        currentWaveIndex = 0;
+
+        GameObject[] activeEnemies = GameObject.FindGameObjectsWithTag("Enemy");
+        foreach (GameObject enemy in activeEnemies)
+        {
+            NetworkObject netObj = enemy.GetComponent<NetworkObject>();
+            if (netObj != null && netObj.IsSpawned)
+            {
+                netObj.Despawn(true);
+            }
+            else
+            {
+                Destroy(enemy);
+            }
+        }
+        waveCoroutine = StartCoroutine(WaveRoutine());
     }
 }
