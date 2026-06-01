@@ -15,7 +15,6 @@ public class BulletController : NetworkBehaviour
             {
                 rb.linearVelocity = transform.up * speed;
             }
-
             Invoke(nameof(DestroyBullet), lifeTime);
         }
     }
@@ -31,7 +30,6 @@ public class BulletController : NetworkBehaviour
             {
                 enemyScript.TakeDamage(5); 
             }
-
             if (NetworkObject.IsSpawned)
             {
                 NetworkObject.Despawn(true);
