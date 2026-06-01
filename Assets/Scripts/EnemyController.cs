@@ -187,7 +187,7 @@ public class EnemyController : NetworkBehaviour
                 playerNetworkObject.Despawn(true);
                 if (GameManager.Instance != null)
                 {
-                    GameManager.Instance.TriggerLose();
+                    GameManager.Instance.CheckIfAllDead();
                 }
             }
         }

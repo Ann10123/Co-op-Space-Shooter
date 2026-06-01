@@ -105,6 +105,27 @@ public class GameManager : NetworkBehaviour
         }
     }
 
+    public void CheckIfAllDead()
+    {
+        if (!IsServer || isGameEnded) return;
+
+        bool isAnyPlayerAlive = false;
+
+        foreach (var client in NetworkManager.Singleton.ConnectedClientsList)
+        {
+            if (client.PlayerObject != null && client.PlayerObject.gameObject.activeInHierarchy)
+            {
+                isAnyPlayerAlive = true;
+                break;
+            }
+        }
+
+        if (!isAnyPlayerAlive)
+        {
+            TriggerLose();
+        }
+    }
+
     public void TriggerLose()
     {
         if (!IsServer || isGameEnded) return; 
